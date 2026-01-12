@@ -9,17 +9,18 @@ tools:
   write: true
   glob: true
   bash: true
-permission:
-  write: allow
-  bash:
-    "marp *": allow
-    "npx @marp-team/marp-cli *": allow
-    "mkdir -p *": allow
-    "ls *": allow
-    "find *": allow
-    "cp *": allow
-    "python *": allow
-    "*": deny
+ permission:
+   write: allow
+   bash:
+     "marp *": allow
+     "npx @marp-team/marp-cli *": allow
+     "mmdc *": allow
+     "mkdir -p *": allow
+     "ls *": allow
+     "find *": allow
+     "cp *": allow
+     "python *": allow
+     "*": deny
 ---
 
 # Slide Generator Agent
@@ -42,6 +43,7 @@ permission:
 - 敘事流程 (Narrative Flow)
 - 學術語與數學符號
 - 時長分配
+- **✅ Mermaid 圖表**：識別標記 `✅ 已驗證` 的 mermaid 代碼塊
 
 ### 2. 簡報設計原則
 
@@ -89,6 +91,56 @@ paginate: true
 - 行內公式: `$E[X] = \sum x P(X=x)$`
 - 區塊公式: `$$V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R + \gamma V^\pi(s')]$$`
 
+**圖片引用** (⚠️ Marp 不直接支援 mermaid，必須先轉換為 PNG)：
+
+**重要說明**：
+- Marp **不支援**直接嵌入 mermaid 代碼塊
+- **必須**使用 `mmdc` 將 mermaid 轉換為 PNG 後再引用
+- 研究文件中標記 `✅ 已驗證` 的 mermaid 圖表可直接使用
+
+**Mermaid 圖表處理流程**：
+1. **提取代碼**：從研究文件中提取已驗證的 mermaid 代碼塊
+2. **轉換為 PNG**：使用 `mmdc` 命令批量轉換
+3. **嵌入 Markdown**：使用 `![](./images/diagramX.png)` 語法引用
+
+**轉換命令**：
+```bash
+# 創建圖片目錄
+mkdir -p week{XX}/slides/images
+
+# 轉換單個 mermaid 圖表
+mmdc -i temp.mmd -o week{XX}/slides/images/diagram1.png -t default -w 1200 -H 600
+
+# 批量轉換所有圖表
+for i in {1..7}; do
+  mmdc -i week{XX}/slides/temp_diagram${i}.mmd -o week{XX}/slides/images/diagram${i}.png -t default -w 1200 -H 600
+done
+
+# 驗證圖片生成
+ls -lh week{XX}/slides/images/*.png
+```
+
+**在 Marp Markdown 中引用**：
+```markdown
+<!-- _class: fit -->
+## 節點結構
+
+每個節點包含兩個欄位：
+
+![Node Structure](./images/diagram1.png)
+
+<div style="text-align: center; font-size: 12pt; color: #666;">
+  圖 1: 節點結構包含 data 和 next 欄位
+</div>
+```
+
+**圖片尺寸建議**：
+- 寬度：1000-1200px（適合投影）
+- 高度：500-700px（避免溢出）
+- 格式：PNG（相容性最佳，PDF 支援完整）
+- 主題：`default` 或 `forest`（清晰易讀）
+- 背景：白色或透明（與 Marp 主題融合）
+
 **佈局技巧：**
 ```markdown
 <div class="columns">
@@ -128,6 +180,12 @@ bash "ls -lh week02/slides/week02_slides.pdf"
 
 # 預覽 Markdown（如果需要）
 bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --allow-local-files"
+
+# 轉換 Mermaid 為 PNG (新功能)
+bash "mmdc -i week02/slides/temp_diagram1.mmd -o week02/slides/images/diagram1.png -t default -w 1200 -H 600"
+
+# 驗證 PNG 已生成
+bash "ls -lh week02/slides/images/*.png"
 ```
 
 **常見錯誤（切勿這樣做）**：
@@ -169,6 +227,78 @@ bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --allow-local-files
 - **公式優先**: 如果文字和公式在同一頁會造成溢出，優先讓公式佔據完整頁面，文字移至另一頁
 
 ### 5. 輸出流程 (帶驗證檢查點)
+
+**步驟 0: 處理 Mermaid Diagrams** (如研究文件包含已驗證的 mermaid 圖表)
+
+**前提條件**：
+- 研究文件中存在標記 `✅ 已驗證` 的 mermaid 代碼塊
+- 研究文件中的 `Visualizations` 章節已通過 mermaid-validator 驗證
+
+**處理流程**：
+
+1. **創建圖片目錄**：
+   - 使用 `bash "mkdir -p week{XX}/slides/images"` 創建目錄
+   - ✅ **檢查點**: 使用 `bash "ls -la week{XX}/slides/images"` 驗證目錄創建成功
+
+2. **提取 Mermaid 代碼**：
+   - 從研究文件的 `Visualizations` 章節提取所有標記 `✅ 已驗證` 的 mermaid 代碼塊
+   - 將每個代碼塊保存為臨時 `.mmd` 文件（格式：`temp_diagram{i}.mmd`）
+   - ✅ **檢查點**: 確認提取的代碼塊數量與研究文件中一致
+
+3. **轉換為 PNG**：
+   - 對每個 `.mmd` 文件執行轉換命令：
+     ```bash
+     mmdc -i week{XX}/slides/temp_diagram{i}.mmd -o week{XX}/slides/images/diagram{i}.png -t default -w 1200 -H 600
+     ```
+   - ✅ **檢查點**: 等待每個命令完成，確認返回碼為 0
+   - ✅ **檢查點**: 使用 `bash "ls -lh week{XX}/slides/images/*.png"` 驗證所有 PNG 文件存在且大小 > 0
+   - ✅ **檢查點**: 確認圖片數量與提取的代碼塊數量一致
+
+4. **嵌入到 Marp Markdown**：
+   - 在適當的幻燈片中使用相對路徑引用圖片：`![](./images/diagram{i}.png)`
+   - 添加圖片說明（可選但建議）：
+     ```markdown
+     <div style="text-align: center; font-size: 12pt; color: #666;">
+       圖 1: 節點結構包含 data 和 next 欄位
+     </div>
+     ```
+   - ✅ **檢查點**: 確認所有圖片引用路徑正確（使用相對路徑，不是絕對路徑）
+
+5. **錯誤處理與降級方案**：
+
+   **如果 `mmdc` 轉換失敗**：
+   1. 檢查 mermaid 代碼語法
+   2. 嘗試使用 `mermaid-patch` skill 自動修復（假設 skill 已安裝）
+      ```bash
+      python3 .opencode/skill/mermaid-patch/scripts/patch_mermaid.py --file week{XX}/plan/section_XX_research.md
+      ```
+   3. 如果修復失敗，詢問用戶是否需要使用 `mermaid-design` skill 重新設計圖表
+   4. **降級方案**：使用文字描述或 ASCII 圖替代圖片
+      ```markdown
+      ## 節點結構 (降級: 文字描述)
+
+      每個節點包含兩個欄位：
+      - **data 欄位**：儲存實際資料
+      - **next 欄位**：指向下一個節點
+
+      ```
+      節點示意：
+      ┌─────────────┐
+      │  data  next │───→ 下一節點
+      └─────────────┘
+      ```
+      ```
+   5. 報告具體錯誤訊息和已採取的處理措施
+
+   **如果 PNG 生成失敗但 mermaid 代碼正確**：
+   1. 檢查 `mmdc` 版本（需要 11.12.0 或更高）：`mmdc --version`
+   2. 嘗試降低解析度：`-w 800 -H 400`
+   3. 檢查系統是否安裝必要的依賴（Node.js, npm）
+   4. 報告具體錯誤訊息
+
+   **如果研究文件中沒有 mermaid 圖表**：
+   - 跳過此步驟，直接進入「步驟 1: 寫入 Marp Markdown」
+   - 不需要報告，這是正常情況
 
 **步驟 1: 寫入 Marp Markdown**
 - 輸出路徑: `week{XX}/slides/{filename}.md`
@@ -217,9 +347,10 @@ bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --allow-local-files
 
 **Agent 將自動**:
 1. 讀取指定的 week{XX}/plan/ 目錄下的研究文件
-2. 合併內容並重新組織為簡報結構
-3. 生成 `week{XX}/slides/weekXX_slides.md`
-4. 轉換為 `week{XX}/slides/weekXX_slides.pdf`
+2. 識別並處理研究文件中的已驗證 mermaid 圖表（如有）
+3. 合併內容並重新組織為簡報結構
+4. 生成 `week{XX}/slides/weekXX_slides.md`
+5. 轉換為 `week{XX}/slides/weekXX_slides.pdf`
 
 ## 約束
 
@@ -246,11 +377,19 @@ bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --allow-local-files
    - 數學符號：使用 LaTeX 格式
 
 5. **完整性檢查**:
-   - 包含標題頁
-   - 包含大綱頁
-   - 所有章節都有對應幻燈片
-   - 包含總結頁
-   - PDF 轉換成功
+    - 包含標題頁
+    - 包含大綱頁
+    - 所有章節都有對應幻燈片
+    - 包含總結頁
+    - PDF 轉換成功
+
+6. **Mermaid 圖表處理約束** (如適用):
+    - 必須使用 `mmdc` 將 mermaid 轉換為 PNG，不能直接嵌入 mermaid 代碼
+    - 只使用研究文件中標記 `✅ 已驗證` 的 mermaid 圖表
+    - 圖片尺寸必須合理（寬度 1000-1200px，高度 500-700px）
+    - 使用相對路徑引用圖片：`./images/diagram{i}.png`
+    - 如轉換失敗，必須提供降級方案（文字描述或 ASCII 圖）
+    - 所有 mermaid 圖表必須先通過 mermaid-validator 驗證後再使用
 
 ## 防溢出示例
 
@@ -357,7 +496,22 @@ $$
     - **拆分長幻燈片**: 將過多內容拆分成 2-3 張幻燈片
     - **簡化內容**: 移除非核心細節，保留最關鍵的概念
     - **處理長公式**: 將複雜公式拆分成多行或簡化表示
-    - **減少項目清單**: 超過 6 項的清單應該拆分
+     - **減少項目清單**: 超過 6 項的清單應該拆分
+
+5. **Mermaid 圖表處理失敗**:
+     - **mmdc 轉換失敗**：
+       1. 檢查 mermaid 代碼語法
+       2. 使用 `mermaid-patch` skill 自動修復
+       3. 嘗試使用 `mermaid-design` skill 重新設計
+       4. 降級為文字描述或 ASCII 圖
+     - **PNG 文件未生成**：
+       1. 檢查 `mmdc` 版本（需要 11.12.0+）
+       2. 降低圖片解析度（`-w 800 -H 400`）
+       3. 檢查磁碟空間
+     - **圖片在 PDF 中未顯示**：
+       1. 檢查圖片路徑是否正確（相對路徑）
+       2. 確認圖片格式支援（PNG）
+       3. 驗證圖片文件未損壞
 
 ## 最佳實踐
 
@@ -394,6 +548,15 @@ $$
 - [ ] 命令成功返回（exit code 0）？
 - [ ] PDF 文件已生成且大小 > 0？
 - [ ] Markdown 文件已使用 `write` tool 創建？
+
+### Mermaid 處理檢查 (如適用)
+- [ ] 創建了 `week{XX}/slides/images/` 目錄？
+- [ ] 提取了研究文件中所有 `✅ 已驗證` 的 mermaid 代碼塊？
+- [ ] 使用 `mmdc` 成功轉換所有 mermaid 為 PNG？
+- [ ] 所有 PNG 文件存在且大小 > 0？
+- [ ] 在 Marp Markdown 中正確引用了所有圖片？
+- [ ] 圖片引用使用相對路徑 `./images/diagram{i}.png`？
+- [ ] 圖片尺寸合理（寬度 1000-1200px，高度 500-700px）？
 
 ### 內容檢查
 - [ ] 標題頁存在？
