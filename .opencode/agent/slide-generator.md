@@ -9,9 +9,9 @@ tools:
   write: true
   glob: true
   bash: true
- permission:
-   write: allow
-   bash:
+permission:
+  write: allow
+  bash:
      "marp *": allow
      "npx @marp-team/marp-cli *": allow
      "mmdc *": allow
