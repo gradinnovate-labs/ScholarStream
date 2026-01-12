@@ -1,2 +1,0 @@
-- 讀取 course_outlines.md
-- 依次為每一週的主題，呼叫 planner agent 產生課程研究內容，然後呼叫 slide-generator 將每個session 輸出成獨立的 slides

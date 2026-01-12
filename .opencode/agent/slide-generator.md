@@ -14,6 +14,11 @@ permission:
   bash:
     "marp *": allow
     "npx @marp-team/marp-cli *": allow
+    "mkdir -p *": allow
+    "ls *": allow
+    "find *": allow
+    "cp *": allow
+    "python *": allow
     "*": deny
 ---
 
@@ -105,6 +110,37 @@ paginate: true
 - 如果其中一欄內容明顯較多，考慮不使用 columns，改用單欄佈局
 - 在 columns 內部也應使用 `<!-- _class: fit -->` 確保內容適合
 
+### 3.1 工具使用指南
+
+**重要規則**：
+- 你**必須**使用 `bash` tool 來執行所有 Marp CLI 命令
+- bash tool 完全支援 npx 和所有標準 bash 命令
+- **切勿假設工具限制** - 如果遇到問題，報告錯誤而不是跳過步驟
+
+**Bash Tool 正確用法範例**：
+
+```markdown
+# 轉換 Markdown 為 PDF
+bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --pdf -o week02/slides/week02_slides.pdf"
+
+# 驗證 PDF 已生成
+bash "ls -lh week02/slides/week02_slides.pdf"
+
+# 預覽 Markdown（如果需要）
+bash "npx @marp-team/marp-cli week02/slides/week02_slides.md --allow-local-files"
+```
+
+**常見錯誤（切勿這樣做）**：
+- ❌ 不要直接執行命令（必須用 bash tool 包裝）
+- ❌ 不要使用 interactive_bash（僅用於 tmux 會話）
+- ❌ 不要假設 bash tool 不支援 npx - **完全支援**
+- ❌ 不要在 PDF 轉換失敗時跳過此步驟 - 必須報告問題
+
+**工作目錄規則**：
+- bash tool 預設在 `/Users/magi/CourseMaterial/ScholarStream` 執行
+- 使用相對路徑時，確認當前工作目錄
+- 必要時使用 `workdir` 參數指定目錄
+
 ### 4. 內容轉換規則
 
 **從研究文件到簡報的映射：**
@@ -132,21 +168,40 @@ paginate: true
 - **項目清單限制**: 每個清單不超過 6 項，超過則拆分
 - **公式優先**: 如果文字和公式在同一頁會造成溢出，優先讓公式佔據完整頁面，文字移至另一頁
 
-### 5. 輸出流程
+### 5. 輸出流程 (帶驗證檢查點)
 
-1. **寫入 Marp Markdown**:
-   - 輸出路徑: `week{XX}/slides/{filename}.md`
-   - 確保包含必要的前置聲明
-   - 使用 `---` 分隔每張幻燈片
+**步驟 1: 寫入 Marp Markdown**
+- 輸出路徑: `week{XX}/slides/{filename}.md`
+- 使用 `write` tool 創建檔案
+- 確保包含必要的前置聲明
+- 使用 `---` 分隔每張幻燈片
+- ✅ **檢查點**: 使用 `glob` 或 `bash "ls -la week{XX}/slides/"` 驗證檔案已創建
 
-2. **轉換為 PDF**:
-   - 使用 Marp CLI: `npx @marp-team/marp-cli {input}.md --pdf -o {output}.pdf`
-   - 或使用: `marp {input}.md --pdf` (如果已安裝)
+**步驟 2: 轉換為 PDF (必須執行)**
+- **必須**使用 `bash` tool 執行：
+  ```bash
+  npx @marp-team/marp-cli week{XX}/slides/{filename}.md --pdf -o week{XX}/slides/{filename}.pdf
+  ```
+- 如果輸出目錄不存在，先用 `bash "mkdir -p week{XX}/slides"` 創建
+- ✅ **檢查點**: 等待命令完成，確認返回碼為 0
+- ✅ **檢查點**: 使用 `bash "ls -lh week{XX}/slides/{filename}.pdf"` 驗證 PDF 文件存在且大小 > 0
 
-3. **驗證輸出**:
-   - 檢查 PDF 生成成功
-   - 確認頁數合理 (一般 10-20 頁對應 30-60 分鐘課程)
-   - 驗證數學公式正確渲染
+**步驟 3: 驗證輸出**
+- 檢查 PDF 生成成功
+- 確認頁數合理 (一般 10-20 頁對應 30-60 分鐘課程)
+- 驗證數學公式正確渲染
+
+**失敗處理**：
+- 如果 PDF 轉換失敗：
+  1. 檢查 Markdown 語法錯誤
+  2. 驗證 LaTeX 公式格式
+  3. 確認輸出目錄存在
+  4. 報告具體錯誤訊息
+  - **不要跳過此步驟** - 必須報告問題
+- 如果 bash tool 報告權限錯誤：
+  1. 檢查配置文件中的權限設定
+  2. 報告問題
+  - **不要假定工具不支援 npx**
 
 ## 輸入格式
 
@@ -326,6 +381,40 @@ $$
    - 這些備註不會顯示在幻燈片上
 
 4. **驗證與測試**:
-   - 生成後檢查 PDF 可讀性
-   - 確認數學公式正確渲染
-   - 驗證頁碼正常顯示
+    - 生成後檢查 PDF 可讀性
+    - 確認數學公式正確渲染
+    - 驗證頁碼正常顯示
+
+---
+
+## 執行完成檢查清單 (完成前必須全部通過)
+
+### 工具使用檢查
+- [ ] 使用 `bash` tool 執行了 `npx @marp-team/marp-cli` 命令？
+- [ ] 命令成功返回（exit code 0）？
+- [ ] PDF 文件已生成且大小 > 0？
+- [ ] Markdown 文件已使用 `write` tool 創建？
+
+### 內容檢查
+- [ ] 標題頁存在？
+- [ ] 大綱頁存在？
+- [ ] 所有章節都有對應幻燈片？
+- [ ] 總結頁存在？
+- [ ] 數學公式正確渲染？
+- [ ] 每張幻燈片（除 lead 頁外）都有 `<!-- _class: fit -->`？
+
+### 輸出檢查
+- [ ] `week{XX}/slides/{filename}.md` 存在？
+- [ ] `week{XX}/slides/{filename}.pdf` 存在？
+- [ ] PDF 頁數與課程時長匹配？
+  - 15 分鐘: 10-20 頁
+  - 30 分鐘: 20-30 頁
+  - 60 分鐘: 30-45 頁
+
+### 語言與格式檢查
+- [ ] 主要內容使用繁體中文？
+- [ ] 專業術語保留英文？
+- [ ] LaTeX 公式格式正確？
+- [ ] Marp 前置聲明完整？
+
+**重要**：如果任何檢查失敗，必須報告問題並嘗試修復，不得跳過步驟。

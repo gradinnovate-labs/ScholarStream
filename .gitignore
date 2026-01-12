@@ -206,3 +206,17 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 week*/*
+
+# ScholarStream runtime data
+database/
+
+# SQLite database files (test/dev artifacts)
+perf*.db
+perf*.db-shm
+perf*.db-wal
+state*.db
+state*.db-shm
+state*.db-wal
+*.db
+*.db-shm
+*.db-wal
