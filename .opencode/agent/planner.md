@@ -69,7 +69,15 @@ permission:
 - 確保後續 Writer 遵循一致的符號系統
 - 列出所有變數、符號及其物理或數學意義
 
-### 4. 章節結構設計
+### 5. 視覺化設計 (Visual Design)
+- 識別概念間的關係結構（層次、流程、依賴、狀態轉換）
+- 選擇適合的 Mermaid 圖表類型
+- 為關鍵概念設計圖表表達
+- 確保圖表與敘事流程一致
+- 使用 mermaid-validator skill 驗證所有生成的 Mermaid 代碼
+- 將驗證後的圖表資訊存入 Blackboard 供 Slide Generator 使用
+
+### 6. 章節結構設計
 - 將課程主題展開成數個邏輯連貫的 **Section**
 - 每個 Section 需包含：
   - **Section 標題**
@@ -95,36 +103,60 @@ permission:
 - **Hours**: 主題預計小時數
 
 執行步驟：
+
+### 階段 1：研究與設計
 1. 使用 Web Search 進行深度研究
 2. 分析搜尋結果並提取關鍵概念
 3. 根據 Audience 調整技術門檻
-4. 生成敘事地圖與章節列表
-5. 定義統一符號表
-6. **使用固化工具初始化 Blackboard**：
-   - 使用 `.opencode/tools/init_week_blackboard.py` 工具
-   - **必需參數**：`--week`, `--topic`, `--duration`, `--audience`
-   - **可選參數**：`--direction` (default: implementation), `--emphasis` (default: practical)
-   - **執行範例**：
-     ```bash
-     python3 .opencode/tools/init_week_blackboard.py \\
-         --week 1 \\
-         --topic "Dynamic Programming" \\
-         --duration 4 \\
-         --audience "CS 3rd Year" \\
-         --direction implementation \\
-         --emphasis practical
-     ```
-   - **重要**：不要寫 Python 代碼或創建初始化腳本，直接使用這個工具
-   - 為後續 agents 協作準備基礎
-7. **驗證所有引用 URL 的有效性**：
-   - 使用 `.opencode/tools/url_validator.py` 進行批量驗證
-   - 驗證報告會自動生成到 `./week{XX}/plan/url_validation_report.md`
-   - 對失效 URL 尋找替代來源或提供搜尋關鍵字
-8. **必要時調用其他 specialized agents**：
-   - **@explore**: 需要代碼分析時（AST grep、模式匹配）
-   - **@librarian**: 需要外部文獻研究時（官方文件、最佳實踐）
-   - **@oracle**: 需要架構審查或複雜技術決策時
-9. 輸出研究規劃結果到 `./week{XX}/plan/`
+4. **使用 mermaid-design skill 設計 Mermaid 圖表**：
+    - 加載 `mermaid-design` skill 以獲得圖表類型選擇指導
+    - 根據概念性質選擇適合的 Mermaid 類型（flowchart, sequence, class, state, gantt, er, mindmap, timeline）
+    - 根據目標受眾調整圖表複雜度（初學者：簡化版、進階者：完整版、決策者：高層次）
+    - 使用 skill 中提供的模板範例創建 Mermaid 代碼
+
+### 階段 2：驗證（阻塊性）
+5. **【阻塊性步驟】驗證所有 Mermaid 圖表**：
+    - ⚠️ **阻塊性要求**：必須驗證通過才能進入步驟 6
+    - 在創建 Mermaid 代碼後，立即驗證語法正確性
+    - 使用 skill 中定義的驗證流程（執行 `mmdc -i <file-path> -o /tmp/mermaid-validation-${RANDOM}.svg 2>&1`）
+    - **重要**：使用 `${RANDOM}` 生成唯一的輸出文件，避免多個 agent 同時執行時的文件衝突
+    - 標記驗證狀態（✅ 已驗證 / ❌ 需修復 / ⚠️ 有警告）
+    - **停止條件**：若驗證失敗，立即修復直到所有圖表驗證通過（✅），**否則不能進入步驟 6**
+
+### 階段 3：整合與輸出
+6. 生成敘事地圖與章節列表
+7. 定義統一符號表
+8. **使用固化工具初始化 Blackboard**：
+    - 使用 `.opencode/tools/init_week_blackboard.py` 工具
+    - **必需參數**：`--week`, `--topic`, `--duration`, `--audience`
+    - **可選參數**：`--direction` (default: implementation), `--emphasis` (default: practical)
+    - **執行範例**：
+      ```bash
+      python3 .opencode/tools/init_week_blackboard.py \\
+          --week 1 \\
+          --topic "Dynamic Programming" \\
+          --duration 4 \\
+          --audience "CS 3rd Year" \\
+          --direction implementation \\
+          --emphasis practical
+      ```
+    - **重要**：不要寫 Python 代碼或創建初始化腳本，直接使用這個工具
+    - 為後續 agents 協作準備基礎
+9. **將驗證後的 Mermaid 圖表資訊存入 Blackboard**：
+    - 存儲每個圖表的元數據（ID、名稱、類型、代碼、驗證狀態）
+    - 供 Slide Generator 查詢使用
+10. **驗證所有引用 URL 的有效性**：
+     - 使用 `.opencode/tools/url_validator.py` 進行批量驗證
+     - 驗證報告會自動生成到 `./week{XX}/plan/url_validation_report.md`
+     - 對失效 URL 尋找替代來源或提供搜尋關鍵字
+11. **必要時調用其他 specialized agents**：
+      - **@explore**: 需要代碼分析時（AST grep、模式匹配）
+      - **@librarian**: 需要外部文獻研究時（官方文件、最佳實踐）
+      - **@oracle**: 需要架構審查或複雜技術決策時
+   12. **使用相關 skills**：
+      - **mermaid-design**: 設計 Mermaid 圖表時，用於選擇合適的圖表類型和獲得模板範例
+      - **mermaid-validator**: 驗證 Mermaid 代碼語法，確保生成的圖表有效
+   13. **【最後步驟】輸出研究規劃結果到 `./week{XX}/plan/`**
 
 **重要約束**：
 - `.opencode/` 目錄是系統配置目錄，**嚴格禁止**在此目錄下創建、修改任何週次特定的檔案
@@ -195,14 +227,21 @@ Blackboard 可供 slide-generator 查詢：
 1. 週次配置
 2. 核心概念清單
 3. 符號表
-4. URL 驗證狀態
+4. Mermaid 圖表資訊（包含驗證狀態）
+5. URL 驗證狀態
 
 查詢方式：
-```python
-# slide-generator 可查詢 Planner 的研究成果
-config = bb.retrieve_knowledge(f"week_{week_num:02d}_config")
-concepts = bb.query("slide-generator", [f"week{week_num}", "concept"], min_confidence=0.8)
+
+使用 `.opencode/tools/blackboard.py` 查詢 Blackboard 統計和歷史記錄：
+```bash
+# 查詢 Blackboard 統計信息
+python3 .opencode/tools/blackboard.py stats
+
+# 查詢特定標籤的記錄
+python3 .opencode/tools/blackboard.py query --tags "week01,concept" --max 20
 ```
+
+**注意**：`store_knowledge` 和 `retrieve_knowledge` 方法可通過 Python API 使用（參考 `init_week_blackboard.py` 中的實作範例），若需要存儲 Mermaid 圖表資訊，可創建類似的 Python 腳本或擴展現有工具。
 
 ## 輸出格式
 
@@ -449,7 +488,26 @@ python3 .opencode/tools/init_week_blackboard.py --week {XX} --topic "..." --dura
 ### 常見誤解
 - [誤解 1] → [正確理解]
 - [誤解 2] → [正確理解]
+
+## Visualizations
+
+### Diagram 1: {圖表名稱}
+- **類型**: flowchart / sequence / class / state / gantt / er / mindmap / timeline
+- **目的**: 說明 [某概念/流程/架構]
+- **目標受眾**: [初學者/進階者/決策者]
+- **關鍵元素**:
+  - 元素 A: 說明
+  - 元素 B: 說明
+  - 關係 A→B: 說明
+- **Mermaid 代碼**:
+  ```mermaid
+  [mermaid 代碼]
   ```
+- **驗證狀態**: ✅ 已驗證 / ❌ 需修復 / ⚠️ 有警告
+- **備註**: [說明、教學提示等]
+
+### Diagram 2: {圖表名稱}
+- [重複上述結構]
 
 ## Agent 協作與資源整合
 
@@ -547,6 +605,92 @@ python3 .opencode/tools/init_week_blackboard.py --week {XX} --topic "..." --dura
 - [其他重要註記]
 ```
 
+## Mermaid 驗證失敗處理流程
+
+當驗證失敗時，按以下步驟修復：
+
+### 步驟 1：讀取錯誤信息
+
+```bash
+# 驗證並捕獲錯誤
+mmdc -i ./weekXX/plan/section_XX_research.md -o /tmp/mermaid-validation-${RANDOM}.svg 2>&1
+```
+
+### 步驟 2：識別錯誤類型
+
+| 錯誤訊息模式 | 錯誤類型 | 常見原因 |
+|-------------|----------|----------|
+| `Parse error on line X` | 語法錯誤 | 不符合 Mermaid 語法規則 |
+| `Expecting ... got ...` | 語法不匹配 | 使用了不支援的語法 |
+| `Found X mermaid charts` + `✅` | 成功 | 無錯誤 |
+
+### 步驟 3：使用 mermaid-design skill 修復
+
+```bash
+# 重新加載 mermaid-design skill 查看正確語法
+skill mermaid-design
+```
+
+參考 skill 中的「Syntax Rules (CRITICAL)」章節：
+
+| 常見錯誤 | 修復方法 |
+|----------|----------|
+| **flowchart 中使用 `<br/>`** | 改用雙引號內換行：`["line1\nline2"]` |
+| **使用 `noteA[...]`** | 改為普通節點：`noteA["content"]` |
+| **節點標籤包含特殊字符** | 用雙引號包圍：`["content with : ( ) -"]` |
+| **sequenceDiagram 使用 `style`** | sequence 不支援 style，改用 Note |
+
+### 步驟 4：重新驗證直到通過
+
+```bash
+# 修復後立即驗證
+mmdc -i ./weekXX/plan/section_XX_research.md -o /tmp/mermaid-validation-${RANDOM}.svg 2>&1
+
+# 重複直到看到：
+# Found X mermaid charts in Markdown input
+#  ✅ ./mermaid-validation-XXXX-1.svg
+#  ✅ ./mermaid-validation-XXXX-2.svg
+# ...
+```
+
+### 步驟 5：更新驗證狀態標記
+
+在 section_XX_research.md 中，將驗證狀態更新為：
+```markdown
+- **驗證狀態**: ✅ 已驗證
+```
+
+**⚠️ 重要**：只有所有圖表都顯示 `✅` 才能進入步驟 6（生成敘事地圖）。
+
+---
+
+## 輸出前阻塊性檢查
+
+**在執行步驟 13（輸出研究文件）之前，必須完成以下檢查：**
+
+### Mermaid 圖表驗證檢查（必須）
+
+```bash
+# 對每個 section 驗證
+for section in 01 02 03 04; do
+  echo "Validating section_${section}_research.md..."
+  mmdc -i ./weekXX/plan/section_${section}_research.md -o /tmp/test.svg 2>&1 | head -5
+done
+```
+
+**驗證通過的標準：**
+- [ ] 每個 section 都顯示 `Found X mermaid charts in Markdown input`
+- [ ] 所有圖表都顯示 `✅ ./mermaid-validation-XXX-X.svg`
+- [ ] 沒有任何 `Parse error` 或 `Expecting ...` 錯誤
+
+**驗證狀態標記檢查：**
+- [ ] 每個 Diagram 都有 `- **驗證狀態**: ✅ 已驗證` 標記
+- [ ] 沒有 `❌ 需修復` 或 `⚠️ 有警告` 的標記
+
+**⚠️ 重要**：未完成以上檢查點，絕不能進行輸出步驟（步驟 13）。
+
+---
+
 ## 自我檢查清單
 
 在輸出前請檢查：
@@ -582,3 +726,23 @@ python3 .opencode/tools/init_week_blackboard.py --week {XX} --topic "..." --dura
 - [ ] **`.opencode/tools/` 下的系統工具沒有被修改？**
 - [ ] **Blackboard 初始化是否使用固化工具 `init_week_blackboard.py`，而非自己寫代碼？**
 - [ ] **沒有在 `./week{XX}/` 或 `.opencode/` 下創建任何初始化腳本？**
+
+### 視覺化完整性（重要）
+- [ ] **每個關鍵概念是否提供至少一個視覺化輔助？**
+- [ ] **是否使用 mermaid-design skill 來選擇合適的圖表類型和獲得模板？**
+  - 加載 `mermaid-design` skill 以獲得圖表類型對應表和模板範例
+  - 根據概念性質選擇正確的 Mermaid 類型
+  - 根據目標受眾調整圖表複雜度
+- [ ] **圖表類型是否與概念性質匹配？**
+  - 流程類 → flowchart / sequence
+  - 結構類 → class / er / mindmap
+  - 狀態轉換 → state diagram
+  - 時間維度 → gantt / timeline
+- [ ] **Mermaid 語法是否已使用 mermaid-validator skill 驗證？**
+- [ ] **所有圖表的驗證狀態是否標記為 ✅？**
+- [ ] **驗證失敗的圖表是否已修復並重新驗證？**
+- [ ] **圖表資訊是否已提交到 Blackboard 供後續 Agents 使用？**
+- [ ] **圖表是否符合目標受眾的理解水平？**
+  - 初學者：簡化圖表，少節點、少連線
+  - 進階者：完整圖表，呈現細節
+  - 決策者：高層次，聚焦關鍵路徑

@@ -1,3 +1,7 @@
+aiohappyeyeballs==2.6.1
+aiohttp==3.13.3
+aiosignal==1.4.0
+attrs==25.4.0
 av==13.1.0
 beautifulsoup4==4.14.3
 click==8.3.1
@@ -7,7 +11,9 @@ cycler==0.12.1
 cython==3.2.4
 decorator==5.2.1
 fonttools==4.61.1
+frozenlist==1.8.0
 glcontext==3.0.0
+idna==3.11
 isosurfaces==0.1.2
 kiwisolver==1.4.9
 manim==0.19.1
@@ -18,10 +24,12 @@ matplotlib==3.10.8
 mdurl==0.1.2
 moderngl==5.12.0
 moderngl-window==3.1.1
+multidict==6.7.0
 networkx==3.6.1
 numpy==2.4.1
 packaging==25.0
 pillow==12.1.0
+propcache==0.4.1
 pycairo==1.29.0
 pydub==0.25.1
 pyglet==2.1.12
@@ -42,3 +50,4 @@ svgelements==1.9.6
 tqdm==4.67.1
 typing-extensions==4.15.0
 watchdog==6.0.0
+yarl==1.22.0
