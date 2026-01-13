@@ -220,3 +220,4 @@ state*.db-wal
 *.db
 *.db-shm
 *.db-wal
+course_progress.json

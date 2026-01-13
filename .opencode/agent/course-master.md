@@ -12,6 +12,7 @@ tools:
   bash: true
   todowrite: true
   todoread: true
+  skill: true
 permission:
   task:
     planner: allow
@@ -28,8 +29,8 @@ permission:
     "cp *": allow
   write:
     "./week*/**": allow
-    "./.opencode/.blackboard.json": allow
-    "./.opencode/course_progress.json": allow
+    "./database/blackboard.json": allow
+    "./database/course_progress.json": allow
   edit:
     "./week*/**": allow
   websearch: allow
@@ -155,6 +156,13 @@ python3 .opencode/tools/course_orchestrator.py \
 使用 `task` 工具調用 planner agent：
 ```
 @planner
+
+⚠️ 重要提醒：執行過程中**必須**使用以下 skills：
+1. mermaid-design - 設計 Mermaid 圖表類型和模板
+2. mermaid-validator - 驗證所有 Mermaid 代碼語法（阻塞性步驟）
+3. mermaid-patch - 自動檢測並修復 Mermaid 語法錯誤
+
+參數：
 - Week: {week_num}
 - Topic: {topic}
 - Hours: {hours}
@@ -167,13 +175,22 @@ python3 .opencode/tools/course_orchestrator.py \
 - Web 搜尋與深度研究
 - 生成敘事地圖 (Narrative Map)
 - 使用 mermaid-design skill 設計 Mermaid 圖表
-- 使用 mermaid-validator skill 驗證所有 Mermaid 圖表
+- 使用 mermaid-validator skill 驗證所有 Mermaid 圖表（✅ 全部通過才能繼續）
+- 必要時使用 mermaid-patch skill 自動修復 Mermaid 語法錯誤
 - 驗證所有引用的 URLs（使用 url_validator.py）
 - 輸出研究文檔到 `week{XX}/plan/`
 
 **重要**: Planner 完成後，你必須驗證其輸出。
 
-#### 步驟 2.5: 驗證 Planner 輸出
+#### 步驟 2.5: 自動檢測並修復 Mermaid 語法錯誤（可選但推薦）
+```bash
+# 使用 mermaid-patch skill 自動檢測並修復研究文件中的 Mermaid 語法錯誤
+skill mermaid-patch
+# mermaid-patch 會掃描 ./week{XX}/plan/ 目錄下的所有 .md 文件
+# 並自動修復常見的 Mermaid 語法錯誤
+```
+
+#### 步驟 2.6: 驗證 Planner 輸出
 ```bash
 python3 .opencode/tools/course_orchestrator.py validate-planner --week {week_num}
 ```
@@ -186,14 +203,14 @@ python3 .opencode/tools/course_orchestrator.py validate-planner --week {week_num
 
 如果驗證失敗，記錄錯誤並標記該週為 failed。
 
-#### 步驟 2.6: 更新進度狀態為 Slides
+#### 步驟 2.7: 更新進度狀態為 Slides
 ```bash
 python3 .opencode/tools/course_orchestrator.py \
     update-status --week {week_num} --status slides \
     --sections $(ls week{XX}/plan/section_*_research.md 2>/dev/null | wc -l)
 ```
 
-#### 步驟 2.7: 調用 Slide-Generator Agent
+#### 步驟 2.8: 調用 Slide-Generator Agent
 使用 `task` 工具調用 slide-generator agent：
 ```
 @slide-generator 生成 week{week_num} 的簡報
@@ -207,7 +224,7 @@ python3 .opencode/tools/course_orchestrator.py \
 
 **重要**: Slide-Generator 完成後，你必須驗證其輸出。
 
-#### 步驟 2.8: 驗證 Slides 輸出
+#### 步驟 2.9: 驗證 Slides 輸出
 ```bash
 python3 .opencode/tools/course_orchestrator.py validate-slides --week {week_num}
 ```
@@ -218,14 +235,14 @@ python3 .opencode/tools/course_orchestrator.py validate-slides --week {week_num}
 
 如果驗證失敗，記錄錯誤並標記該週為 failed。
 
-#### 步驟 2.9: 更新進度狀態為 Completed
+#### 步驟 2.10: 更新進度狀態為 Completed
 ```bash
 python3 .opencode/tools/course_orchestrator.py \
     update-status --week {week_num} --status completed \
     --pages $(grep -c "^---" week{XX}/slides/week{XX}_slides.md 2>/dev/null || echo 0)
 ```
 
-#### 步驟 2.10: 更新 Todo List
+#### 步驟 2.11: 更新 Todo List
 將已完成的週次的所有任務標記為完成。
 
 ### 階段 3: 進度管理
@@ -359,7 +376,7 @@ python3 .opencode/tools/course_orchestrator.py \
 ### 並行模式下的狀態追蹤
 
 **進度文件依賴**:
-- 所有並行任務的狀態記錄在 `.opencode/course_progress.json`
+- 所有並行任務的狀態記錄在 `database/course_progress.json`
 - 使用 atomic operations 避免競態條件
 - Blackboard 已實現 thread-safe 機制（Lock）
 

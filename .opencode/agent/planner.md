@@ -122,6 +122,10 @@ permission:
     - **重要**：使用 `${RANDOM}` 生成唯一的輸出文件，避免多個 agent 同時執行時的文件衝突
     - 標記驗證狀態（✅ 已驗證 / ❌ 需修復 / ⚠️ 有警告）
     - **停止條件**：若驗證失敗，立即修復直到所有圖表驗證通過（✅），**否則不能進入步驟 6**
+    - **修復策略**：
+      - 優先使用 `mermaid-patch` skill 自動檢測並修復常見的 Mermaid 語法錯誤
+      - 若 mermaid-patch 無法修復，參考 mermaid-design skill 中的正確語法範例手動修復
+      - 修復後必須重新驗證直到通過（✅）
 
 ### 階段 3：整合與輸出
 6. 生成敘事地圖與章節列表
@@ -154,8 +158,9 @@ permission:
       - **@librarian**: 需要外部文獻研究時（官方文件、最佳實踐）
       - **@oracle**: 需要架構審查或複雜技術決策時
    12. **使用相關 skills**：
-      - **mermaid-design**: 設計 Mermaid 圖表時，用於選擇合適的圖表類型和獲得模板範例
-      - **mermaid-validator**: 驗證 Mermaid 代碼語法，確保生成的圖表有效
+       - **mermaid-design**: 設計 Mermaid 圖表時，用於選擇合適的圖表類型和獲得模板範例
+       - **mermaid-validator**: 驗證 Mermaid 代碼語法，確保生成的圖表有效
+       - **mermaid-patch**: 自動檢測並修復 Mermaid 語法錯誤（當驗證失敗時使用）
    13. **【最後步驟】輸出研究規劃結果到 `./week{XX}/plan/`**
 
 **重要約束**：
