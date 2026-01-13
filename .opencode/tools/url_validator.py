@@ -13,7 +13,7 @@ from pathlib import Path
 class URLValidator:
     """Validates URLs in research documents and provides status reports"""
 
-    def __init__(self, timeout: int = 10, max_concurrent: int = 10):
+    def __init__(self, timeout: int = 5, max_concurrent: int = 20):
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.max_concurrent = max_concurrent
 

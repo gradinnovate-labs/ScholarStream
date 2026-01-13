@@ -89,7 +89,7 @@ class MermaidPatcher:
                 ['mmdc', '-i', temp_path, '-o', '/tmp/mermaid-validation-test.svg'],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=15
             )
             is_valid = result.returncode == 0
             output = result.stdout + result.stderr

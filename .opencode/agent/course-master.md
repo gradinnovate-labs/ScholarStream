@@ -3,7 +3,7 @@ description: Orchestrates multi-week course generation by coordinating planner a
 mode: subagent
 model: zai-coding-plan/glm-4.7
 temperature: 0.3
-maxSteps: 50
+maxSteps: 200
 tools:
   task: true
   read: true
@@ -65,6 +65,28 @@ permission:
 週次 3: 主題="Graph Algorithms", 時長=5, 對象="advanced", 方向="application", 重點="cases"
 ```
 
+
+
+### 執行模式選項 (可選)
+- `parallel=true` (預設): 並行處理多週，加速生成
+- `sequential=true`: 順序處理，每週完成後才開始下一週
+
+**範例**:
+```
+主題: 多週課程
+並行處理: true
+週次 1: 主題="Binary Tree", 時長=3, 對象="beginner", 方向="theory", 重點="depth"
+週次 2: 主題="Dynamic Programming", 時長=4, 對象="intermediate", 方向="implementation", 重點="practice"
+...
+```
+
+在 JSON 配置中:
+```json
+{
+  "weeks": [...],
+  "parallel": true
+}
+```
 ### JSON 配置模式
 也可以直接提供 JSON 配置文件或 JSON 字串。
 
@@ -222,40 +244,161 @@ python3 .opencode/tools/course_orchestrator.py \
 
 #### 錯誤恢復策略
 
-1. **目錄創建失敗**:
+**錯誤記錄格式**:
+```bash
+python3 .opencode/tools/course_orchestrator.py \
+    update-status --week {week_num} --status failed \
+    --error "[PHASE] {detailed_error_message}"
+```
+
+**錯誤標籤說明**:
+- `[INIT]` - 初始化階段錯誤
+- `[PLANNER]` - Planner agent 執行錯誤
+- `[PLANNER_VALIDATE]` - Planner 輸出驗證失敗
+- `[SLIDES]` - Slide-generator agent 執行錯誤
+- `[SLIDES_VALIDATE]` - Slides 輸出驗證失敗
+- `[SYSTEM]` - 系統性錯誤（blackboard、progress file 等）
+
+---
+
+**1. 目錄創建失敗** `[INIT]`:
    - 檢查權限問題
    - 記錄錯誤訊息
-   - 標記該週為 failed
+   - 標記該週為 failed:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[INIT] 目錄創建失敗: {error_message}"
+     ```
    - 繼續下一週
 
-2. **Blackboard 初始化失敗**:
+**2. Blackboard 初始化失敗** `[INIT]`:
    - 檢查 `.opencode/.blackboard.json` 文件權限
    - 嘗試重新初始化一次
-   - 如果仍失敗，標記為 failed 並繼續
+   - 如果仍失敗，標記為 failed 並繼續:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[INIT] Blackboard 初始化失敗: {error_message}"
+     ```
 
-3. **Planner 調用失敗**:
+**3. Planner 調用失敗** `[PLANNER]`:
    - 檢查錯誤訊息
-   - 記錄詳細的錯誤信息到進度文件
-   - 使用 `update-status --week {week_num} --status failed --error "..."` 記錄
+   - 記錄詳細的錯誤信息到進度文件:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[PLANNER] Planner agent 執行錯誤: {detailed_error}"
+     ```
    - 繼續下一週
 
-4. **Planner 輸出驗證失敗**:
+**4. Planner 輸出驗證失敗** `[PLANNER_VALIDATE]`:
    - 檢查缺少的文件
-   - 記錄缺失的文件清單
+   - 記錄缺失的文件清單:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[PLANNER_VALIDATE] 驗證失敗: 缺少文件 {missing_files_list}"
+     ```
    - 標記該週為 failed
    - 繼續下一週
 
-5. **Slide-Generator 調用失敗**:
+**5. Slide-Generator 調用失敗** `[SLIDES]`:
    - 檢查錯誤訊息（可能是 Mermaid 轉換問題、Marp CLI 問題等）
-   - 記錄詳細錯誤信息
+   - 記錄詳細錯誤信息:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[SLIDES] Slide-generator 執行錯誤: {detailed_error}"
+     ```
    - 標記該週為 failed
    - 繼續下一週
 
-6. **Slides 輸出驗證失敗**:
+**6. Slides 輸出驗證失敗** `[SLIDES_VALIDATE]`:
    - 檢查 PDF 文件是否存在且大小 > 0
-   - 記錄缺失的文件
+   - 記錄缺失的文件:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[SLIDES_VALIDATE] 驗證失敗: {missing_files_or_empty_pdf}"
+     ```
    - 標記該週為 failed
    - 繼續下一週
+
+**7. 系統性錯誤** `[SYSTEM]`:
+   - Blackboard 文件損壞無法修復
+   - Progress file 無法寫入
+   - 停止整個流程並報告用戶:
+     ```bash
+     python3 .opencode/tools/course_orchestrator.py \
+         update-status --week {week_num} --status failed \
+         --error "[SYSTEM] 致命錯誤: {error_message} - 無法繼續執行"
+     ```
+   - 生成緊急報告
+
+---
+
+**並行模式特殊處理**:
+   - 單週失敗**不中斷**其他週的執行
+   - 失敗的週標記為 `failed`，其他週繼續
+   - 最終報告中明確列出所有失敗週次
+   - 使用錯誤標籤快速識別失敗階段
+
+**錯誤分類**:
+   - **可重試錯誤**: 記錄但不中斷（超時、網絡問題、臨時性錯誤）
+   - **致命錯誤**: 記錄並跳過該週（agent 邏輯錯誤、文件系統錯誤）
+   - **系統性錯誤**: 停止整個流程（blackboard 損壞、進度文件無法寫入）
+
+**繼續決策**:
+   - **並行模式**: 失敗週自動跳過，其他週繼續
+   - **順序模式**: 當前週失敗後，直接進入下一週
+   - **系統性錯誤**: 停止所有任務，報告用戶
+
+
+
+### 並行模式下的狀態追蹤
+
+**進度文件依賴**:
+- 所有並行任務的狀態記錄在 `.opencode/course_progress.json`
+- 使用 atomic operations 避免競態條件
+- Blackboard 已實現 thread-safe 機制（Lock）
+
+**並行任務管理**:
+```
+週次狀態轉換圖:
+
+pending → planning (批量初始化)
+   ↓
+planning → slides (planner 完成)
+   ↓
+slides → completed (slide-generator 完成)
+   ↓
+任何步驟 → failed (錯誤發生)
+```
+
+**狀態檢查頻率**:
+- 每次調用 subagent 前檢查 progress file
+- 每次更新後立即同步到文件
+- 定期使用 `todoread` 報告當前進度
+
+**並行任務數量**:
+- 預設最多同時執行 3 週的 planner
+- 可根據系統資源調整（建議 2-5）
+- Slide-generator 階段可與 planner 階段重疊
+
+**Race Condition 防護**:
+- Progress file 使用原子寫入（寫入到臨時文件後重命名）
+- 每週使用獨立的狀態標記
+- 失敗週次不影響其他週的狀態更新
+
+**並行度控制**:
+```bash
+# 檢查當前並行度
+python3 .opencode/tools/course_orchestrator.py show
+
+# 調整並行度（在 agent 配置中）
+# 預設: 3 週同時執行
+```
 
 ### 階段 4: 完成報告
 
@@ -276,10 +419,19 @@ python3 .opencode/tools/course_orchestrator.py report --config {config_file}
 
 ## 約束條件
 
-### 1. 順序執行
-- **必須按週次順序執行**，不能並行處理
+### 1. 執行模式
+
+**並行處理模式 (預設)**:
+- 支援多週並行處理，加速整體生成時間
+- 每週內部仍保持順序執行（planner → slide-generator）
+- 不同週之間可以同時進行
+- 使用 `course_orchestrator.py` 的 progress file 狀態管理
+
+**順序處理模式 (可選)**:
+- 若指定 `sequential=true`，則回退到原始順序模式
 - 完成一週後才開始下一週
-- 禁止同時調用多個 subagents
+- 適合需要嚴格依序驗證的場景
+
 
 ### 2. 完整執行
 - 每週必須完成完整的 planner → slide-generator 流程
@@ -358,38 +510,51 @@ python3 .opencode/tools/course_orchestrator.py report --config {config_file}
 ```
 ## Course Generation - 完成
 
+### 執行模式
+- 模式: {parallel | sequential}
+- 並行度: {同時執行週次數}
+
 ### 統計摘要
-- 總週次: 3
-- 成功完成: 2
-- 失敗: 1
-- 總執行時間: 45 分鐘
+- 總週次: {total_weeks}
+- 成功完成: {completed_weeks}
+- 失敗: {failed_weeks}
+- 總執行時間: {total_time}
+- 並行加速比: {speedup_ratio}x (相對順序模式估計時間: {estimated_sequential_time})
 
 ### 成功的週次
 
-✅ Week 01: Binary Tree
-   - 研究章節: 4
-   - 簡報頁數: 35
-   - 輸出: ./week01/slides/week01_slides.pdf
+✅ Week {week_num}: {topic}
+   - 研究章節: {sections_count}
+   - 簡報頁數: {slides_pages}
+   - 輸出: ./week{week_num}/slides/week{week_num}_slides.pdf
+   - 完成時間: {completion_time} (並行第 {batch_num} 批)
 
-✅ Week 02: Dynamic Programming
-   - 研究章節: 5
-   - 簡報頁數: 42
-   - 輸出: ./week02/slides/week02_slides.pdf
+(重複所有成功的週次）
 
 ### 失敗的週次
 
-❌ Week 03: Graph Algorithms
-   - 失敗原因: Planner agent 無法完成 URL 驗證
-   - 錯誤詳情: timeout while validating URLs in references.md
-   - 建議操作: 檢查網絡連接或手動驗證 URLs
+❌ Week {week_num}: {topic}
+   - 階段: {error_tag}  [INIT|PLANNER|PLANNER_VALIDATE|SLIDES|SLIDES_VALIDATE|SYSTEM]
+   - 失敗原因: {error_summary}
+   - 錯誤詳情: {detailed_error_message}
+   - 開始時間: {start_time}
+   - 失敗時間: {failure_time}
+   - 建議操作: 
+     1. 檢查 {relevant_logs_or_outputs}
+     2. 修復問題後使用 course_orchestrator.py 重置狀態
+     3. 重新生成該週或手動修復
+
+(重複所有失敗的週次）
 
 ### Todo List 最終狀態
 (使用 todoread 顯示的最終狀態)
 
 ### 下一步建議
-1. 檢查失敗週次的錯誤訊息
+1. 檢查失敗週次的錯誤訊息（使用錯誤標籤快速識別問題）
 2. 手動修復問題後重新生成該週
 3. 驗證所有成功週次的 PDF 文件
+4. 如需重新執行，使用 course_orchestrator.py report 查看詳細狀態
+5. 為失敗週次使用單週模式重新生成
 ```
 
 ## 錯誤處理詳細流程
